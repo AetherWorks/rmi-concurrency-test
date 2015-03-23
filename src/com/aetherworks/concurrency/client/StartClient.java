@@ -40,12 +40,12 @@ public class StartClient {
 
 	private static final int NUM_THREADS = 2;
 
+	private static final boolean IS_SINGLE_PROCESS = false;
+
 	public static void main(final String[] args) throws RemoteException, NotBoundException, InterruptedException, ExecutionException {
 
-		final boolean isSingleProcess = true;
-
 		for (final CallType callType : CallType.values()) {
-			final long avgTimeToExecute = CallExecutor.execute(NUM_THREADS, createNewCall(isSingleProcess, callType));
+			final long avgTimeToExecute = CallExecutor.execute(NUM_THREADS, createNewCall(IS_SINGLE_PROCESS, callType));
 			LOGGER.log(Level.INFO, callType.name() + ": " + avgTimeToExecute + " ms.");
 		}
 

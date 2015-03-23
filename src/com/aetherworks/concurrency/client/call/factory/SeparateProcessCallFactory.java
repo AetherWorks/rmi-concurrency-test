@@ -5,12 +5,13 @@
 package com.aetherworks.concurrency.client.call.factory;
 
 import java.io.IOException;
+import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import com.aetherworks.concurrency.client.TimedFunctionExecutor;
-import com.aetherworks.concurrency.client.RemoteCalls.CallType;
 import com.aetherworks.concurrency.client.call.future.CallFuture;
 import com.aetherworks.concurrency.client.call.future.SeparateProcessCallFuture;
-import com.aetherworks.concurrency.util.CommandLineArgs;
 import com.aetherworks.concurrency.util.JavaProcess;
 
 /**
@@ -19,13 +20,14 @@ import com.aetherworks.concurrency.util.JavaProcess;
  * @author Angus Macdonald (amacdonald@aetherworks.com)
  */
 public class SeparateProcessCallFactory implements CallFactory {
+	private final static Logger LOGGER = Logger.getLogger(SeparateProcessCallFactory.class.getName());
 
 	private static int creationNumber = 0;
 
-	private final CallType callType;
+	private final List<String> argsToProcess;
 
-	public SeparateProcessCallFactory(final CallType callType) {
-		this.callType = callType;
+	public SeparateProcessCallFactory(final List<String> argsToProcess) {
+		this.argsToProcess = argsToProcess;
 	}
 
 	/**
@@ -33,17 +35,13 @@ public class SeparateProcessCallFactory implements CallFactory {
 	 */
 	@Override
 	public CallFuture createAndSubmitTask() {
-		final CommandLineArgs args = new CommandLineArgs();
-		args.put('p', 1099);
-		args.put('n', "server-remote");
-		args.put('t', callType.name());
-		final JavaProcess process = new JavaProcess(TimedFunctionExecutor.class, args.getArgsAsList());
+
+		final JavaProcess process = new JavaProcess(TimedFunctionExecutor.class, argsToProcess);
 
 		try {
 			process.executeProcess(creationNumber++ + ": ");
 		} catch (final IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			LOGGER.log(Level.WARNING, "Failed to execute process.", e);
 		}
 
 		return new SeparateProcessCallFuture(process);

@@ -20,37 +20,57 @@ import com.aetherworks.concurrency.client.call.factory.CallFactory;
 import com.aetherworks.concurrency.client.call.factory.SeparateProcessCallFactory;
 import com.aetherworks.concurrency.client.call.factory.SingleProcessCallFactory;
 import com.aetherworks.concurrency.server.ServerRemote;
+import com.aetherworks.concurrency.util.CommandLineArgs;
 
 /**
+ * Start class for the client.
+ * <p>
+ * Modify the provided class variables to set up the program, and run the client by starting through the main method.
+ * 
  * @author Angus Macdonald (amacdonald@aetherworks.com)
  */
 public class StartClient {
+
 	private final static Logger LOGGER = Logger.getLogger(StartClient.class.getName());
 
-	public static void main(final String[] args) throws RemoteException, NotBoundException, InterruptedException, ExecutionException {
-		final Registry registry = LocateRegistry.getRegistry(1099);
-		final ServerRemote server = getServer(registry);
+	private static final String REMOTE_SERVICE_BINDING = "server-remote";
 
-		final int numThreads = 3;
+	private static final String SERVER_HOSTNAME = "localhost";
+	private static final int SERVER_PORT = 1099;
+
+	private static final int NUM_THREADS = 2;
+
+	public static void main(final String[] args) throws RemoteException, NotBoundException, InterruptedException, ExecutionException {
+
 		final boolean isSingleProcess = true;
 
 		for (final CallType callType : CallType.values()) {
-			final long avgTimeToExecute = CallExecutor.execute(numThreads, createNewCall(isSingleProcess, server, callType));
+			final long avgTimeToExecute = CallExecutor.execute(NUM_THREADS, createNewCall(isSingleProcess, callType));
 			LOGGER.log(Level.INFO, callType.name() + ": " + avgTimeToExecute + " ms.");
 		}
+
 	}
 
-	private static CallFactory createNewCall(final boolean singleProcess, final ServerRemote server, final CallType callType) {
+	private static CallFactory createNewCall(final boolean singleProcess, final CallType callType) throws RemoteException,
+			NotBoundException {
 		if (singleProcess) {
+			final Registry registry = LocateRegistry.getRegistry(SERVER_HOSTNAME, SERVER_PORT);
+			final ServerRemote server = getServer(registry);
+
 			return new SingleProcessCallFactory(server, RemoteCalls.getCall(callType, server));
 		} else {
-			return new SeparateProcessCallFactory(callType);
+			final CommandLineArgs args = new CommandLineArgs();
+			args.put('p', SERVER_PORT);
+			args.put('h', SERVER_HOSTNAME);
+			args.put('n', REMOTE_SERVICE_BINDING);
+			args.put('t', callType.name());
+			return new SeparateProcessCallFactory(args.getArgsAsList());
 		}
 	}
 
 	private static ServerRemote getServer(final Registry registry) throws RemoteException, NotBoundException, AccessException {
 		try {
-			return (ServerRemote) registry.lookup("server-remote");
+			return (ServerRemote) registry.lookup(REMOTE_SERVICE_BINDING);
 		} catch (final ConnectException e) {
 			LOGGER.log(Level.SEVERE, "Remote server not active.");
 			System.exit(1);
